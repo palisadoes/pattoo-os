@@ -14,10 +14,10 @@ from pattoo import data as Data
 from pattoo import configuration
 
 # Define flask parameters
-APP = Flask(__name__)
+API = Flask(__name__)
 
 
-@APP.route('/')
+@API.route('/')
 def home():
     """Display api data on home page.
 
@@ -47,8 +47,8 @@ def home():
 
 
 if __name__ == "__main__":
-    APP.logger.setLevel(logging.DEBUG)
-    APP.logger.addHandler()
+    API.logger.setLevel(logging.DEBUG)
+    API.logger.addHandler()
 
     # Start app
-    APP.run(debug=True)
+    API.run(debug=True)

@@ -15,4 +15,3 @@ actived:
     api_server_port: 6000
     api_server_https: False
     api_server_uri: /pattoo/api/v1
-    

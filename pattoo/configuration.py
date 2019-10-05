@@ -206,6 +206,26 @@ class Config(object):
         # Return
         return result
 
+    def log_file_api(self):
+        """Get log_file_api.
+
+        Args:
+            None
+
+        Returns:
+            result: result
+
+        """
+        # Get result
+        _log_file = self.log_file()
+        if _log_file.lower().endswith('.log') is True:
+            result = '{}-api.log'.format(_log_file[0:-4])
+        else:
+            result = '{}-api.log'.format(_log_file)
+
+        # Return
+        return result
+
     def log_level(self):
         """Get log_level.
 

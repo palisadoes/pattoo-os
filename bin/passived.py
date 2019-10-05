@@ -1,112 +1,43 @@
 #!/usr/bin/env python3
-"""Pattoo Linux agent.
+"""Switchmap WSGI script.
 
-Description:
-
-    Uses Python2 to be compatible with most Linux systems
-
-    This script:
-        1) Retrieves a variety of system information
-        2) Posts the data using HTTP to a server listed
-           in the configuration file
+Serves as a Gunicorn WSGI entry point for pattoo-os
 
 """
+
 # Standard libraries
 import sys
 import os
 
-# Create python path
-EXEC_DIR = os.path.dirname(os.path.realpath(__file__))
-PATH_DIR = os.path.abspath(os.path.join(EXEC_DIR, os.pardir))
-if PATH_DIR.endswith('/pattoo-os') is True:
-    sys.path.append(PATH_DIR)
-
-# Pattoo libraries
-try:
-    from pattoo import pattoo
-except:
-    print('You need to set your PYTHONPATH to include the Pattoo library')
+# Try to create a working PYTHONPATH
+_BIN_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+_ROOT_DIRECTORY = os.path.abspath(os.path.join(_BIN_DIRECTORY, os.pardir))
+if _BIN_DIRECTORY.endswith('/pattoo-os/bin') is True:
+    sys.path.append(_ROOT_DIRECTORY)
+else:
+    print(
+        'This script is not installed in the "pattoo-os/bin" directory. '
+        'Please fix.')
     sys.exit(2)
-from pattoo import agent as Agent
-from pattoo import configuration
-from pattoo import log
-from pattoo.api import APP
 
-
-class PollingAgent(object):
-    """Pattoo agent that gathers data."""
-
-    def __init__(self):
-        """Initialize the class.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        """
-        # Initialize key variables
-        self._agent_name = 'patoo-os-passived'
-
-        # Get configuration
-        self._config = configuration.Config()
-
-    def name(self):
-        """Return agent name.
-
-        Args:
-            None
-
-        Returns:
-            value: Name of agent
-
-        """
-        # Return
-        value = self._agent_name
-        return value
-
-    def query(self):
-        """Query all remote devices for data.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        """
-        # Initialize key variables
-        if self._config.bind_port():
-            data = self._config.bind_port()
-            port = int(data)
-        else:
-            port = 5000
-
-        # Do stuff
-        log_message = (
-            'Starting agent {} on TCP port {}.').format(self._agent_name, port)
-        log.log2info(1088, log_message)
-        APP.run(host='0.0.0.0', port=port)
+# Switchmap libraries
+from pattoo.agent import Agent, AgentAPI, AgentCLI
+from pattoo.pattoo import API_EXECUTABLE, API_GUNICORN_AGENT
 
 
 def main():
-    """Start the agent.
+    """Main function to start the Gunicorn WSGI."""
+    # Get PID filenename for Gunicorn
+    agent_gunicorn = Agent(API_GUNICORN_AGENT)
 
-    Args:
-        None
-
-    Returns:
-        None
-
-    """
     # Get configuration
-    cli = Agent.AgentCLI()
-    poller = PollingAgent()
+    agent_api = AgentAPI(API_EXECUTABLE, API_GUNICORN_AGENT)
 
-    # Do control
-    cli.control(poller)
+    # Do control (API first, Gunicorn second)
+    cli = AgentCLI()
+    cli.control(agent_api)
+    cli.control(agent_gunicorn)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

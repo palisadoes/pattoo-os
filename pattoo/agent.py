@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pattoo Agent class.
+"""Pattoo .Agent class.
 
 Description:
 
@@ -11,78 +11,51 @@ Description:
 """
 # Standard libraries
 import textwrap
-import os
 import sys
-import socket
-import json
 import time
-from collections import defaultdict
-from random import random
 import argparse
-from copy import deepcopy
+import multiprocessing
+import os
+from pprint import pprint
 
-# pip3 libraries
-import requests
+# PIP3 libraries
 from gunicorn.app.base import BaseApplication
 from gunicorn.six import iteritems
 
 # Pattoo libraries
-from pattoo.daemon import Daemon
 from pattoo import daemon
+from pattoo.constants import CONFIG
 from pattoo import log
-from pattoo import general
-from pattoo import language
+from pattoo.api import API
 
 
 class Agent(object):
-    """Pattoo agent that gathers data."""
+    """Agent class for daemons."""
 
-    def __init__(self, config):
+    def __init__(self, parent, child=None):
         """Initialize the class.
 
         Args:
-            config: ConfigAgent configuration object
+            parent: Name of parent daemon
+            child: Name of child daemon
 
         Returns:
             None
 
         """
-        # Initialize key variables
-        self._data = defaultdict(lambda: defaultdict(dict))
-        agent_name = config.agent_name()
-        id_agent = _get_id_agent(config)
-        self._lang = language.Agent(agent_name)
+        # Initialize key variables (Parent)
+        self.parent = parent
+        self.pidfile_parent = daemon.pid_file(parent)
+        self.lockfile_parent = daemon.lock_file(parent)
 
-        # Get devicename
-        devicename = socket.getfqdn()
-
-        # Add timestamp
-        self._data['timestamp'] = general.normalized_timestamp()
-        self._data['id_agent'] = id_agent
-        self._data['agent'] = agent_name
-        self._data['devicename'] = devicename
-
-        # Construct URL for server
-        if config.api_server_https() is True:
-            prefix = 'https://'
+        # Initialize key variables (Child)
+        if bool(child) is None:
+            self._pidfile_child = None
         else:
-            prefix = 'http://'
-        self.url = (
-            '{}{}:{}/{}/receive/{}'.format(
-                prefix, config.api_server_name(),
-                config.api_server_port(), config.api_server_uri(), id_agent))
-
-        # Create the cache directory
-        self.cache_dir = config.agent_cache_directory()
-        if os.path.exists(self.cache_dir) is False:
-            os.mkdir(self.cache_dir)
-
-        # All cache files created by this agent will end with this suffix.
-        devicehash = general.hashstring(self._data['devicename'], sha=1)
-        self.cache_suffix = '{}_{}.json'.format(id_agent, devicehash)
+            self._pidfile_child = daemon.pid_file(child)
 
     def name(self):
-        """Return the name of the agent.
+        """Return agent name.
 
         Args:
             None
@@ -92,272 +65,33 @@ class Agent(object):
 
         """
         # Return
-        value = self._data['agent']
+        value = self.parent
         return value
 
-    def populate(self, data_in):
-        """Populate data for agent to eventually send to server.
-
-        Args:
-            data_in: dict of datapoint values from agent
-            timeseries: TimeSeries data if True
-
-        Returns:
-            None
-
-        """
-        # Initialize data
-        data = deepcopy(data_in)
-
-        # Validate base_type
-        if len(data) != 1 or isinstance(data, defaultdict) is False:
-            log_message = 'Agent data "{}" is invalid'.format(data)
-            log.log2die(1025, log_message)
-
-        # Get a description to use for label value
-        for label in data.keys():
-            description = self._lang.label_description(label)
-            data[label]['description'] = description
-            break
-
-        # Add data to appropriate self._data key
-        if data[label]['base_type'] is not None:
-            self._data['timeseries'].update(data)
-        else:
-            self._data['timefixed'].update(data)
-
-    def populate_single(self, label, value, base_type=None, source=None):
-        """Populate a single value in the agent.
-
-        Args:
-            label: Agent label for data
-            value: Value of data
-            source: Source of the data
-            base_type: Base type of data
-
-        Returns:
-            None
-
-        """
-        # Initialize key variables
-        data = defaultdict(lambda: defaultdict(dict))
-        data[label]['base_type'] = base_type
-        data[label]['data'] = [[0, value, source]]
-
-        # Update
-        self.populate(data)
-
-    def populate_named_tuple(self, named_tuple, prefix='', base_type=1):
-        """Post system data to the central server.
-
-        Args:
-            named_tuple: Named tuple with data values
-            prefix: Prefix to append to data keys when populating the agent
-            base_type: SNMP style base_type (integer, counter32, etc.)
-
-        Returns:
-            None
-
-        """
-        # Get data
-        system_dict = named_tuple._asdict()
-        for label, value in system_dict.items():
-            # Convert the dict to two dimensional dict keyed by [label][source]
-            # for use by self.populate_dict
-            new_label = '{}_{}'.format(prefix, label)
-
-            # Initialize data
-            data = defaultdict(lambda: defaultdict(dict))
-
-            # Add data
-            data[new_label]['data'] = [[0, value, None]]
-            data[new_label]['base_type'] = base_type
-
-            # Update
-            self.populate(data)
-
-    def populate_dict(self, data_in, prefix='', base_type=1):
-        """Populate agent with data that's a dict keyed by [label][source].
-
-        Args:
-            data_in: Dict of data to post "X[label][source] = value"
-            prefix: Prefix to append to data keys when populating the agent
-            base_type: SNMP style base_type (integer, counter32, etc.)
-
-        Returns:
-            None
-
-        """
-        # Initialize data
-        data_input = deepcopy(data_in)
-
-        # Iterate over labels
-        for label in data_input.keys():
-            # Initialize tuple list to use by agent.populate
-            value_sources = []
-            new_label = '{}_{}'.format(prefix, label)
-
-            # Initialize data
-            data = defaultdict(lambda: defaultdict(dict))
-            data[new_label]['base_type'] = base_type
-
-            # Append to tuple list
-            # (Sorting is important to keep consistent ordering)
-            for source, value in sorted(data_input[label].items()):
-                value_sources.append(
-                    [source, value, source]
-                )
-            data[new_label]['data'] = value_sources
-
-            # Update
-            self.populate(data)
-
-    def polled_data(self):
-        """Return that that should be posted.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        """
-        # Return
-        return self._data
-
-    def post(self, save=True, data=None):
-        """Post data to central server.
-
-        Args:
-            save: When True, save data to cache directory if postinf fails
-            data: Data to post. If None, then uses self._data
-
-        Returns:
-            success: "True: if successful
-
-        """
-        # Initialize key variables
-        success = False
-        response = False
-        timestamp = self._data['timestamp']
-
-        # Create data to post
-        if data is None:
-            data = self._data
-
-        # Post data save to cache if this fails
-        try:
-            result = requests.post(self.url, json=data)
-            response = True
-        except:
-            if save is True:
-                # Create a unique very long filename to reduce risk of
-                filename = '{}/{}_{}.json'.format(
-                    self.cache_dir, timestamp, self.cache_suffix)
-
-                # Save data
-                with open(filename, 'w') as f_handle:
-                    json.dump(data, f_handle)
-
-        # Define success
-        if response is True:
-            if result.status_code == 200:
-                success = True
-
-        # Log message
-        if success is True:
-            log_message = (
-                'Agent "{}" successfully contacted server {}'
-                ''.format(self.name(), self.url))
-            log.log2info(1027, log_message)
-        else:
-            log_message = (
-                'Agent "{}" failed to contact server {}'
-                ''.format(self.name(), self.url))
-            log.log2warning(1028, log_message)
-
-        # Return
-        return success
-
-    def purge(self):
-        """Purge data from cache by posting to central server.
-
-        Args:
-            None
-
-        Returns:
-            success: "True: if successful
-
-        """
-        # Initialize key variables
-        id_agent = self._data['id_agent']
-
-        # Add files in cache directory to list only if they match the
-        # cache suffix
-        all_filenames = [filename for filename in os.listdir(
-            self.cache_dir) if os.path.isfile(
-                os.path.join(self.cache_dir, filename))]
-        filenames = [
-            filename for filename in all_filenames if filename.endswith(
-                self.cache_suffix)]
-
-        # Read cache file
-        for filename in filenames:
-            # Only post files for our own UID value
-            if id_agent not in filename:
-                continue
-
-            # Get the full filepath for the cache file and post
-            filepath = os.path.join(self.cache_dir, filename)
-            with open(filepath, 'r') as f_handle:
-                try:
-                    data = json.load(f_handle)
-                except:
-                    # Log removal
-                    log_message = (
-                        'Error reading previously cached agent data file {} '
-                        'for agent {}. May be corrupted.'
-                        ''.format(filepath, self.name()))
-                    log.log2die(1064, log_message)
-
-            # Post file
-            success = self.post(save=False, data=data)
-
-            # Delete file if successful
-            if success is True:
-                os.remove(filepath)
-
-                # Log removal
-                log_message = (
-                    'Purging cache file {} after successfully '
-                    'contacting server {}'
-                    ''.format(filepath, self.url))
-                log.log2info(1029, log_message)
+    def query(self):
+        """Placeholder method."""
+        # Do nothing
+        pass
 
 
-class AgentDaemon(Daemon):
-    """Class that manages polling."""
+class AgentDaemon(daemon.Daemon):
+    """Class that manages agent deamonization."""
 
-    def __init__(self, poller):
+    def __init__(self, agent):
         """Initialize the class.
 
         Args:
-            poller: PollingAgent object
+            agent: agent object
 
         Returns:
             None
 
         """
-        # Instantiate poller
-        self.poller = poller
-
-        # Get PID filename
-        agent_name = self.poller.name()
-        pidfile = daemon.pid_file(agent_name)
-        lockfile = daemon.lock_file(agent_name)
+        # Initialize variables to be used by daemon
+        self.agent = agent
 
         # Call up the base daemon
-        Daemon.__init__(self, pidfile, lockfile=lockfile)
+        daemon.Daemon.__init__(self, agent)
 
     def run(self):
         """Start polling.
@@ -371,7 +105,7 @@ class AgentDaemon(Daemon):
         """
         # Start polling. (Poller decides frequency)
         while True:
-            self.poller.query()
+            self.agent.query()
 
 
 class AgentCLI(object):
@@ -464,11 +198,11 @@ class AgentCLI(object):
         # Get the parser value
         self.parser = parser
 
-    def control(self, poller):
-        """Start the agent.
+    def control(self, agent):
+        """Control the pattoo agent from the CLI.
 
         Args:
-            poller: PollingAgent object
+            agent: Agent object
 
         Returns:
             None
@@ -480,7 +214,7 @@ class AgentCLI(object):
         args = parser.parse_args()
 
         # Run daemon
-        _daemon = AgentDaemon(poller)
+        _daemon = AgentDaemon(agent)
         if args.start is True:
             _daemon.start()
         elif args.stop is True:
@@ -501,15 +235,112 @@ class AgentCLI(object):
             sys.exit(2)
 
 
+class AgentAPI(Agent):
+    """pattoo API agent that serves web pages.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Functions:
+        __init__:
+        populate:
+        post:
+    """
+
+    def __init__(self, parent, child):
+        """Initialize the class.
+
+        Args:
+            parent: Name of parent daemon
+            child: Name of child daemon
+
+        Returns:
+            None
+
+        """
+        # Initialize key variables
+        Agent.__init__(self, parent, child)
+        self.config = CONFIG
+
+    def query(self):
+        """Query all remote devices for data.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        """
+        # Initialize key variables
+        config = self.config
+
+        # Check for lock and pid files
+        if os.path.exists(self.lockfile_parent) is True:
+            log_message = (
+                'Lock file {} exists. Multiple API daemons running '
+                'API may have died '
+                'catastrophically in the past, in which case the lockfile '
+                'should be deleted. '
+                ''.format(self.lockfile_parent))
+            log.log2see(1083, log_message)
+
+        if os.path.exists(self.pidfile_parent) is True:
+            log_message = (
+                'PID file: {} already exists. Daemon already running? '
+                'If not, it may have died catastrophically in the past '
+                'in which case you should use --stop --force to fix.'
+                ''.format(self.pidfile_parent))
+            log.log2see(1084, log_message)
+
+        ######################################################################
+        #
+        # Assign options in format that the Gunicorn WSGI will accept
+        #
+        # NOTE! to get a full set of valid options pprint(self.cfg.settings)
+        # in the instantiation of StandaloneApplication. The option names
+        # do not exactly match the CLI options found at
+        # http://docs.gunicorn.org/en/stable/settings.html
+        #
+        ######################################################################
+        options = {
+            'bind': (
+                '{}:{}'.format(config.listen_address(), config.bind_port())),
+            'accesslog': config.log_file_api(),
+            'errorlog': config.log_file_api(),
+            'capture_output': True,
+            'pidfile': self._pidfile_child,
+            'loglevel': config.log_level(),
+            'workers': _number_of_workers(),
+            'umask': 0o0007,
+        }
+
+        # Log so that user running the script from the CLI knows that something
+        # is happening
+        log_message = (
+            'Pattoo API running on {}:{} and logging to file {}.'
+            ''.format(
+                config.listen_address(),
+                config.bind_port(),
+                config.log_file_api()))
+        log.log2info(1022, log_message)
+
+        # Run
+        StandaloneApplication(API, options).run()
+
+
 class StandaloneApplication(BaseApplication):
-    """Class to integrate the Gunicorn WSGI with the Switchmap Flask application.
+    """Class to integrate the Gunicorn WSGI with the Pattoo Flask application.
 
     Modified from: http://docs.gunicorn.org/en/latest/custom.html
 
     """
 
     def __init__(self, app, options=None):
-        """Method initializing the class.
+        """Initialize the class.
 
         args:
             app: Flask application object of type Flask(__name__)
@@ -538,48 +369,37 @@ class StandaloneApplication(BaseApplication):
         return self.application
 
 
-def _get_id_agent(config):
-    """Create a permanent UID for the agent.
+def _number_of_workers():
+    """Get the number of CPU cores on this server."""
+    return (multiprocessing.cpu_count() * 2) + 1
+
+
+def agent_sleep(agent_name, seconds=300):
+    """Make agent sleep for a specified time, while updating PID every 300s.
 
     Args:
-        config: ConfigAgent configuration object
+        agent_name: Name of agent
+        seconds: number of seconds to sleep
 
     Returns:
-        id_agent: UID for agent
+        uid: UID for agent
 
     """
     # Initialize key variables
-    agent_name = config.agent_name()
-    filename = daemon.id_agent_file(agent_name)
+    interval = 300
+    remaining = seconds
 
-    # Read environment file with UID if it exists
-    if os.path.isfile(filename):
-        with open(filename) as f_handle:
-            id_agent = f_handle.readline()
-    else:
-        # Create a UID and save
-        id_agent = _generate_id_agent()
-        with open(filename, 'w+') as env:
-            env.write(str(id_agent))
+    # Start processing
+    while True:
+        # Update the PID file timestamp (important)
+        daemon.update_pid(agent_name)
 
-    # Return
-    return id_agent
+        # Sleep for at least "interval" number of seconds
+        if remaining < interval:
+            time.sleep(remaining)
+            break
+        else:
+            time.sleep(interval)
 
-
-def _generate_id_agent():
-    """Generate a UID.
-
-    Args:
-        None
-
-    Returns:
-        id_agent: the UID
-
-    """
-    # Create a UID and save
-    prehash = '{}{}{}{}{}'.format(
-        random(), random(), random(), random(), time.time())
-    id_agent = general.hashstring(prehash)
-
-    # Return
-    return id_agent
+        # Decrement remaining time
+        remaining = remaining - interval

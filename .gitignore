@@ -14,5 +14,7 @@ __pycache__
 *.pattoo
 
 # Ignore files in these directories and ALL subdirectories
+# # Ignore files in these directories and ALL subdirectories
 cache/**
+etc/**
 log/**
