@@ -1,0 +1,18 @@
+# Ignore all vim / vi temporary files
+*.swp
+
+# Ignore any compiled python code
+*.pyc
+__pycache__
+
+#############################################################################
+# <Developer Section>
+# Placed to reduce the risk of contributors uploading sensitive data
+#############################################################################
+
+# Ignore hidden environment files / directory
+*.pattoo
+
+# Ignore files in these directories and ALL subdirectories
+cache/**
+log/**
