@@ -13,8 +13,11 @@ __pycache__
 # Ignore hidden environment files / directory
 *.pattoo
 
-# Ignore files in these directories and ALL subdirectories
-# # Ignore files in these directories and ALL subdirectories
-cache/**
+# Ignore files in these directories and ALL subdirectories, 
+# but maintain the directory structure
 etc/**
+!etc/.gitkeep
+cache/**
+!cache/.gitkeep
 log/**
+!log/.gitkeep
