@@ -24,7 +24,7 @@ from gunicorn.six import iteritems
 
 # Pattoo libraries
 from pattoo import daemon
-from pattoo.constants import CONFIG
+from pattoo.pattoo import CONFIG
 from pattoo import log
 from pattoo.api import API
 
