@@ -184,6 +184,30 @@ class Config(object):
         result = received
         return result
 
+    def log_directory(self):
+        """Get log_directory.
+
+        Args:
+            None
+
+        Returns:
+            result: result
+
+        """
+        # Get result
+        sub_key = 'log_directory'
+        result = None
+        key = 'main'
+
+        # Get new result
+        _result = _key_sub_key(key, sub_key, self._config_dict)
+
+        # Expand linux ~ notation for home directories if provided.
+        result = os.path.expanduser(_result)
+
+        # Return
+        return result
+
     def log_file(self):
         """Get log_file.
 
@@ -194,15 +218,8 @@ class Config(object):
             result: result
 
         """
-        # Get result
-        sub_key = 'log_file'
-        result = None
-        key = 'main'
-
-        # Get new result
-        result = _key_sub_key(key, sub_key, self._config_dict)
-
-        # Return
+        _log_directory = self.log_directory()
+        result = '{}{}pattoo.log'.format(_log_directory, os.sep)
         return result
 
     def log_file_api(self):
@@ -216,13 +233,8 @@ class Config(object):
 
         """
         # Get result
-        _log_file = self.log_file()
-        if _log_file.lower().endswith('.log') is True:
-            result = '{}-api.log'.format(_log_file[0:-4])
-        else:
-            result = '{}-api.log'.format(_log_file)
-
-        # Return
+        _log_directory = self.log_directory()
+        result = '{}{}pattoo-api.log'.format(_log_directory, os.sep)
         return result
 
     def log_level(self):

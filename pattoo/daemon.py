@@ -263,7 +263,7 @@ class Daemon(object):
         """
         # Simple comment to pass linter
         pass
-        
+
 
 class _Directory:
     """A class for creating the names of hidden directories."""
