@@ -26,7 +26,7 @@ from pattoo.pattoo import API_EXECUTABLE, API_GUNICORN_AGENT
 
 
 def main():
-    """Main function to start the Gunicorn WSGI."""
+    """Control the Gunicorn WSGI."""
     # Get PID filenename for Gunicorn
     agent_gunicorn = Agent(API_GUNICORN_AGENT)
 

@@ -2,6 +2,7 @@
 """Pattoo general library."""
 
 import os
+import sys
 import time
 import hashlib
 import yaml
@@ -163,11 +164,11 @@ def normalized_timestamp(timestamp=None):
     return value
 
 
-def read_yaml_files(directories):
+def read_yaml_files(config_directory):
     """Read the contents of all yaml files in a directory.
 
     Args:
-        directories: List of directory names with configuration files
+        config_directory: Directory with configuration files
 
     Returns:
         config_dict: Dict of yaml read
@@ -178,43 +179,43 @@ def read_yaml_files(directories):
     yaml_from_file = ''
     all_yaml_read = ''
 
-    # Check each directory in sequence
-    for config_directory in directories:
-        # Check if config_directory exists
-        if os.path.isdir(config_directory) is False:
-            log_message = (
-                'Configuration directory "{}" '
-                'doesn\'t exist!'.format(config_directory))
-            log.log2die(1009, log_message)
+    if os.path.isdir(config_directory) is False:
+        log_message = (
+            'Configuration directory "{}" '
+            'doesn\'t exist!'.format(config_directory))
+        log.log2die(1009, log_message)
 
-        # Cycle through list of files in directory
-        for filename in os.listdir(config_directory):
-            # Examine all the '.yaml' files in directory
-            if filename.endswith('.yaml'):
-                # YAML files found
-                yaml_found = True
+    # Cycle through list of files in directory
+    for filename in os.listdir(config_directory):
+        # Examine all the '.yaml' files in directory
+        if filename.endswith('.yaml'):
+            # YAML files found
+            yaml_found = True
 
-                # Read file and add to string
-                file_path = '{}/{}'.format(config_directory, filename)
-                try:
-                    with open(file_path, 'r') as file_handle:
-                        yaml_from_file = file_handle.read()
-                except:
-                    log_message = (
-                        'Error reading file {}. Check permissions, '
-                        'existence and file syntax.'
-                        ''.format(file_path))
-                    log.log2die(1065, log_message)
+            # Read file and add to string
+            file_path = '{}/{}'.format(config_directory, filename)
+            try:
+                with open(file_path, 'r') as file_handle:
+                    yaml_from_file = file_handle.read()
+            except:
+                log_message = (
+                    'Error reading file {}. Check permissions, '
+                    'existence and file syntax.'
+                    ''.format(file_path))
+                log.log2die(1065, log_message)
 
-                # Append yaml from file to all yaml previously read
-                all_yaml_read = '{}\n{}'.format(all_yaml_read, yaml_from_file)
+            # Append yaml from file to all yaml previously read
+            all_yaml_read = '{}\n{}'.format(all_yaml_read, yaml_from_file)
 
-        # Verify YAML files found in directory
-        if yaml_found is False:
-            log_message = (
-                'No files found in directory "{}" with ".yaml" '
-                'extension.'.format(config_directory))
-            log.log2die(1010, log_message)
+    # Verify YAML files found in directory. We cannot use logging as it
+    # requires a logfile location from the configuration directory to work
+    # properly
+    if yaml_found is False:
+        log_message = (
+            'No configuration files found in directory "{}" with ".yaml" '
+            'extension.'.format(config_directory))
+        print(log_message)
+        sys.exit(1)
 
     # Return
     config_dict = yaml.safe_load(all_yaml_read)

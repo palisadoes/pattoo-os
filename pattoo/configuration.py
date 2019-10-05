@@ -27,8 +27,7 @@ class Config(object):
         config_directory = '{}/etc'.format(general.root_directory())
 
         # Return data
-        directories = [config_directory]
-        self._config_dict = general.read_yaml_files(directories)
+        self._config_dict = general.read_yaml_files(config_directory)
 
     def interval(self):
         """Get interval.

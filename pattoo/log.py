@@ -9,7 +9,7 @@ import logging
 
 
 # Pattoo libraries
-from pattoo import configuration
+from pattoo.pattoo import CONFIG
 
 # Define global variable
 LOGGER = {}
@@ -19,7 +19,7 @@ class GetLog(object):
     """Class to manage the logging without duplicates."""
 
     def __init__(self):
-        """Method initializing the class."""
+        """Initialize the class."""
         # Define key variables
         app_name = 'pattoo'
         levels = {
@@ -31,7 +31,7 @@ class GetLog(object):
         }
 
         # Get the logging directory
-        config = configuration.Config()
+        config = CONFIG
         log_file = config.log_file()
         config_log_level = config.log_level()
 
@@ -42,8 +42,8 @@ class GetLog(object):
             log_level = levels['debug']
 
         # create logger with app_name
-        self.logger_file = logging.getLogger(('%s_file') % (app_name))
-        self.logger_stdout = logging.getLogger(('%s_console') % (app_name))
+        self.logger_file = logging.getLogger('{}_file'.format(app_name))
+        self.logger_stdout = logging.getLogger('{}_console'.format(app_name))
 
         # Set logging levels to file and stdout
         self.logger_stdout.setLevel(log_level)
@@ -198,6 +198,7 @@ def log2die(code, message):
 
     Returns:
         None
+        
     """
     _logit(code, message, error=True)
 
@@ -236,8 +237,8 @@ def _logit(error_num, error_string, error=False, verbose=False, level='info'):
     # Log the message
     if error:
         log_message = (
-            '[%s] (%sE): %s') % (
-                username, error_num, error_string)
+            '[{}] ({}E): {}'.format(
+                username, error_num, error_string))
         logger_stdout.critical('%s', log_message)
         logger_file.critical(log_message)
 
@@ -245,8 +246,8 @@ def _logit(error_num, error_string, error=False, verbose=False, level='info'):
         sys.exit(2)
     else:
         log_message = (
-            '[%s] (%sS): %s') % (
-                username, error_num, error_string)
+            '[{}] ({}S): {}'.format(
+                username, error_num, error_string))
         _logger_file(logger_file, log_message, log_level)
         if verbose:
             _logger_stdout(logger_stdout, log_message, log_level)
@@ -324,8 +325,8 @@ def _message(code, message, error=True):
         prefix = 'ERROR'
     else:
         prefix = 'STATUS'
-    output = ('%s - %s - %s - [%s] %s') % (
-        timestring, username, prefix, code, message)
+    output = ('{} - {} - {} - [{}] {}'.format(
+        timestring, username, prefix, code, message))
 
     # Return
     return output
