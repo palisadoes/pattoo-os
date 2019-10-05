@@ -9,9 +9,9 @@ Functions to stop daemons
 import sys
 
 # Switchmap-NG imports
-from switchmap.utils import general
-from switchmap.main.agent import Agent, AgentAPI, AgentDaemon
-from switchmap.constants import (
+from pattoo import general
+from pattoo.agent import Agent, AgentAPI, AgentDaemon
+from pattoo.pattoo import (
     API_EXECUTABLE, API_GUNICORN_AGENT, POLLER_EXECUTABLE)
 
 

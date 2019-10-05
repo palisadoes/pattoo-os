@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""switchmap CLI classes.
+"""pattoo CLI classes.
 
 Manages basic CLI parsing.
 
@@ -11,8 +11,8 @@ import sys
 import argparse
 from inspect import ismethod
 
-# Do switchmap-ng imports
-from switchmap.cli import show, start, test, stop, restart
+# Do pattoo imports
+from pattoo.cli import status, start, stop, restart
 
 
 class CLI(object):
@@ -30,15 +30,15 @@ class CLI(object):
         """
         # Header for the help menu of the application
         self.parser = argparse.ArgumentParser(
-            prog='switchmap-ng-cli',
+            prog='pattoo-cli',
             description=additional_help,
             formatter_class=argparse.RawTextHelpFormatter)
 
         # Subparser for subcommands
         subparsers = self.parser.add_subparsers(dest='action')
 
-        # Parse show parameters
-        _Show(subparsers)
+        # Parse status parameters
+        _Status(subparsers)
 
         # Parse start parameters
         _Start(subparsers)
@@ -48,9 +48,6 @@ class CLI(object):
 
         # Parse restart parameters
         _Restart(subparsers)
-
-        # Parse test parameters
-        _Test(subparsers)
 
         # Return the CLI arguments
         self.args = self.parser.parse_args()
@@ -82,12 +79,9 @@ class CLI(object):
             # Process start command
             restart.run(args)
             sys.exit(0)
-        elif args.action == 'show':
-            # Process show command
-            show.run(args)
-            sys.exit(0)
-        elif args.action == 'test':
-            test.run(args)
+        elif args.action == 'status':
+            # Process status command
+            status.run(args)
             sys.exit(0)
 
         # Show help otherwise
@@ -95,7 +89,7 @@ class CLI(object):
         sys.exit(2)
 
 
-class _Show(object):
+class _Status(object):
     """Class handles CLI 'show' option."""
 
     def __init__(self, subparsers, width=80):
