@@ -2,22 +2,22 @@
 """This is a test of flask."""
 
 # Standard packages
-import socket
 import json
 import logging
 
 # Pip packages
 from flask import Flask
 
-from pattoo import agent as Agent
-from pattoo import data as Data
+# Pattoo imports
+from pattoo import data
+from pattoo.pattoo import API_PREFIX
 from pattoo import configuration
 
 # Define flask parameters
 API = Flask(__name__)
 
 
-@API.route('/')
+@API.route(API_PREFIX)
 def home():
     """Display api data on home page.
 
@@ -34,14 +34,8 @@ def home():
     # Get configuration
     config = configuration.ConfigAgent(agent_name)
 
-    # Initialize key variables
-    agent = Agent.Agent(config)
-
-    # Update agent with linux data
-    Data.getall(agent)
-
     # Return
-    data_dict = agent.polled_data()
+    data_dict = data.poll(config)
     _data = json.dumps(data_dict)
     return _data
 
