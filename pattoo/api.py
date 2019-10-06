@@ -29,7 +29,7 @@ def home():
 
     """
     # Initialize key variables
-    agent_name = 'passived'
+    agent_name = 'pattoo-os-passived'
 
     # Get configuration
     config = configuration.ConfigAgent(agent_name)

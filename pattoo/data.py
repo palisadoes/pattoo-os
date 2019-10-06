@@ -28,7 +28,7 @@ from pattoo import general
 from pattoo import daemon
 
 
-class Data(object):
+class _Data(object):
     """Pattoo agent that gathers data."""
 
     def __init__(self, config):
@@ -44,7 +44,7 @@ class Data(object):
         # Initialize key variables
         self._data = defaultdict(lambda: defaultdict(dict))
         agent_name = config.agent_name()
-        id_agent = _get_id_agent(config)
+        id_agent = get_id_agent(config)
         self._lang = language.Agent(agent_name)
 
         # Get devicename
@@ -214,7 +214,7 @@ def poll(config):
 
     """
     # Intialize data gathering
-    data = Data(config)
+    data = _Data(config)
 
     # Update agent with system data
     _get_data_system(data)
@@ -362,7 +362,7 @@ def _get_data_network(_data):
     _data.populate_dict(counterkey, prefix='network', base_type=64)
 
 
-def _get_id_agent(config):
+def get_id_agent(config):
     """Create a permanent UID for the _data.
 
     Args:

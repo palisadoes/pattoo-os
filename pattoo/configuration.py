@@ -62,7 +62,7 @@ class Config(object):
 
         """
         # Get result
-        key = 'passived'
+        key = 'pattoo-os-passived'
         sub_key = 'listen_address'
         result = _key_sub_key(key, sub_key, self._config_dict, die=False)
 
@@ -82,7 +82,7 @@ class Config(object):
 
         """
         # Get result
-        key = 'passived'
+        key = 'pattoo-os-passived'
         sub_key = 'bind_port'
         intermediate = _key_sub_key(key, sub_key, self._config_dict, die=False)
 
@@ -104,7 +104,7 @@ class Config(object):
 
         """
         # Initialize key variables
-        key = 'actived'
+        key = 'pattoo-os-actived'
         sub_key = 'api_server_name'
 
         # Get result
@@ -124,7 +124,7 @@ class Config(object):
 
         """
         # Initialize key variables
-        key = 'actived'
+        key = 'pattoo-os-actived'
         sub_key = 'api_server_port'
 
         # Get result
@@ -146,7 +146,7 @@ class Config(object):
 
         """
         # Initialize key variables
-        key = 'actived'
+        key = 'pattoo-os-actived'
         sub_key = 'api_server_https'
 
         # Get result
@@ -166,7 +166,7 @@ class Config(object):
 
         """
         # Initialize key variables
-        key = 'actived'
+        key = 'pattoo-os-actived'
         sub_key = 'api_server_uri'
 
         # Get result
@@ -204,6 +204,13 @@ class Config(object):
 
         # Expand linux ~ notation for home directories if provided.
         result = os.path.expanduser(_result)
+
+        # Check if value exists
+        if os.path.isdir(result) is False:
+            log_message = (
+                'log_directory: "{}" '
+                'in configuration doesn\'t exist!'.format(result))
+            log.log2die(1010, log_message)
 
         # Return
         return result
@@ -296,7 +303,10 @@ class Config(object):
         sub_key = 'agent_cache_directory'
 
         # Get result
-        value = _key_sub_key(key, sub_key, self._config_dict)
+        _value = _key_sub_key(key, sub_key, self._config_dict)
+
+        # Expand linux ~ notation for home directories if provided.
+        value = os.path.expanduser(_value)
 
         # Check if value exists
         if os.path.isdir(value) is False:

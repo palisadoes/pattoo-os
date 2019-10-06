@@ -8,6 +8,6 @@ CONFIG = configuration.Config()
 
 # Create global variables for the API
 API_PREFIX = '/pattoo'
-API_EXECUTABLE = 'passived'
-API_GUNICORN_AGENT = 'passived-gunicorn'
-POLLER_EXECUTABLE = 'actived'
+API_EXECUTABLE = 'pattoo-os-passived'
+API_GUNICORN_AGENT = 'pattoo-os-passived-gunicorn'
+POLLER_EXECUTABLE = 'pattoo-os-actived'

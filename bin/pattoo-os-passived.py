@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Switchmap WSGI script.
+"""Pattoo WSGI script.
 
 Serves as a Gunicorn WSGI entry point for pattoo-os
 
@@ -20,7 +20,7 @@ else:
         'Please fix.')
     sys.exit(2)
 
-# Switchmap libraries
+# Pattoo libraries
 from pattoo.agent import Agent, AgentAPI, AgentCLI
 from pattoo.pattoo import API_EXECUTABLE, API_GUNICORN_AGENT
 
