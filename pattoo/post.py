@@ -43,14 +43,14 @@ class Data(object):
         self._data = _data
 
         # Get the agent_name
-        if 'agent' in self._data:
-            self._agent_name = self._data['agent']
+        if 'agent_program' in self._data:
+            self._agent_name = self._data['agent_program']
         else:
             self._agent_name = ''
 
         # Get the agent ID
         config = configuration.ConfigAgent(self._agent_name)
-        id_agent = pattoo_data.get_id_agent(config)
+        agent_id = pattoo_data.get_agent_id(config)
 
         # Construct URL for server
         if config.api_server_https() is True:
@@ -60,7 +60,7 @@ class Data(object):
         self._url = (
             '{}{}:{}/{}/receive/{}'.format(
                 prefix, config.api_server_name(),
-                config.api_server_port(), config.api_server_uri(), id_agent))
+                config.api_server_port(), config.api_server_uri(), agent_id))
 
         # Create the cache directory
         self._cache_dir = config.agent_cache_directory()
@@ -69,7 +69,7 @@ class Data(object):
 
         # All cache files created by this agent will end with this suffix.
         devicehash = general.hashstring(self._data['devicename'], sha=1)
-        self._cache_filename_suffix = '{}_{}.json'.format(id_agent, devicehash)
+        self._cache_filename_suffix = '{}_{}.json'.format(agent_id, devicehash)
 
     def post(self, save=True, data=None):
         """Post data to central server.
@@ -136,7 +136,7 @@ class Data(object):
 
         """
         # Initialize key variables
-        id_agent = self._data['id_agent']
+        agent_id = self._data['agent_id']
 
         # Add files in cache directory to list only if they match the
         # cache suffix
@@ -150,7 +150,7 @@ class Data(object):
         # Read cache file
         for filename in filenames:
             # Only post files for our own UID value
-            if id_agent not in filename:
+            if agent_id not in filename:
                 continue
 
             # Get the full filepath for the cache file and post

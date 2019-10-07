@@ -44,17 +44,19 @@ class _Data(object):
         # Initialize key variables
         self._data = defaultdict(lambda: defaultdict(dict))
         agent_name = config.agent_name()
-        id_agent = get_id_agent(config)
+        agent_id = get_agent_id(config)
         self._lang = language.Agent(agent_name)
 
         # Get devicename
-        devicename = socket.getfqdn()
+        self._devicename = socket.getfqdn()
 
         # Add timestamp
         self._data['timestamp'] = general.normalized_timestamp()
-        self._data['id_agent'] = id_agent
-        self._data['agent'] = agent_name
-        self._data['devicename'] = devicename
+        self._data['agent_id'] = agent_id
+        self._data['agent_program'] = agent_name
+        self._data['agent_hostname'] = self._devicename
+        self._data['devices'] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict())))
 
     def name(self):
         """Return the name of the _data.
@@ -67,7 +69,7 @@ class _Data(object):
 
         """
         # Return
-        value = self._data['agent']
+        value = self._data['agent_program']
         return value
 
     def populate(self, data_in):
@@ -97,9 +99,9 @@ class _Data(object):
 
         # Add data to appropriate self._data key
         if data[label]['base_type'] is not None:
-            self._data['timeseries'].update(data)
+            self._data['devices'][self._devicename]['timeseries'].update(data)
         else:
-            self._data['timefixed'].update(data)
+            self._data['devices'][self._devicename]['timefixed'].update(data)
 
     def populate_single(self, label, value, base_type=None, source=None):
         """Populate a single value in the _data.
@@ -117,17 +119,17 @@ class _Data(object):
         # Initialize key variables
         data = defaultdict(lambda: defaultdict(dict))
         data[label]['base_type'] = base_type
-        data[label]['data'] = [[0, value, source]]
+        data[label]['data'] = [[source, value]]
 
         # Update
         self.populate(data)
 
-    def populate_named_tuple(self, named_tuple, prefix='', base_type=1):
+    def populate_named_tuple(self, prefix, named_tuple, base_type=1):
         """Post system data to the central server.
 
         Args:
-            named_tuple: Named tuple with data values
             prefix: Prefix to append to data keys when populating the agent
+            named_tuple: Named tuple with data values
             base_type: SNMP style base_type (integer, counter32, etc.)
 
         Returns:
@@ -136,27 +138,31 @@ class _Data(object):
         """
         # Get data
         system_dict = named_tuple._asdict()
+        return_data = defaultdict(lambda: defaultdict(dict))
+        data = []
+
+        # Do nothing if there is no prefix
+        if bool(prefix) is False:
+            return
+
+        # Cycle through results
         for label, value in system_dict.items():
-            # Convert the dict to two dimensional dict keyed by [label][source]
-            # for use by self.populate_dict
-            new_label = '{}_{}'.format(prefix, label)
+            # Convert the dict to list of lists [label][value]
+            data.append([label, value])
 
-            # Initialize data
-            data = defaultdict(lambda: defaultdict(dict))
+        # Add data
+        return_data[prefix]['data'] = data
+        return_data[prefix]['base_type'] = base_type
 
-            # Add data
-            data[new_label]['data'] = [[0, value, None]]
-            data[new_label]['base_type'] = base_type
+        # Update
+        self.populate(return_data)
 
-            # Update
-            self.populate(data)
-
-    def populate_dict(self, data_in, prefix='', base_type=1):
+    def populate_dict(self, prefix, data_in, base_type=1):
         """Populate agent with data that's a dict keyed by [label][source].
 
         Args:
-            data_in: Dict of data to post "X[label][source] = value"
             prefix: Prefix to append to data keys when populating the agent
+            data_in: Dict of data to post "X[label][source] = value"
             base_type: SNMP style base_type (integer, counter32, etc.)
 
         Returns:
@@ -180,7 +186,7 @@ class _Data(object):
             # (Sorting is important to keep consistent ordering)
             for source, value in sorted(data_input[label].items()):
                 value_sources.append(
-                    [source, value, source]
+                    [source, value]
                 )
             data[new_label]['data'] = value_sources
 
@@ -258,7 +264,7 @@ def _get_data_system(_data):
         'process_count', len(psutil.pids()), base_type=1)
 
     _data.populate_named_tuple(
-        psutil.cpu_times_percent(), prefix='cpu_times_percent', base_type=1)
+        'cpu_times_percent', psutil.cpu_times_percent(), base_type=1)
 
     # Load averages
     (la_01, la_05, la_15) = os.getloadavg()
@@ -271,14 +277,14 @@ def _get_data_system(_data):
 
     # Get CPU times
     _data.populate_named_tuple(
-        psutil.cpu_times(), prefix='cpu_times', base_type=64)
+        'cpu_times', psutil.cpu_times(), base_type=64)
 
     # Get CPU stats
     _data.populate_named_tuple(
-        psutil.cpu_stats(), prefix='cpu_stats', base_type=64)
+        'cpu_stats', psutil.cpu_stats(), base_type=64)
 
     # Get memory utilization
-    _data.populate_named_tuple(psutil.virtual_memory(), prefix='memory')
+    _data.populate_named_tuple('memory', psutil.virtual_memory())
 
 
 def _get_data_storage(_data):
@@ -306,8 +312,8 @@ def _get_data_storage(_data):
             counterkey[label][None] = value
         else:
             multikey[label][None] = value
-    _data.populate_dict(multikey, prefix='swap')
-    _data.populate_dict(counterkey, prefix='swap', base_type=64)
+    _data.populate_dict('swap', multikey)
+    _data.populate_dict('swap', counterkey, base_type=64)
 
     # Get filesystem partition utilization
     disk_data = psutil.disk_partitions()
@@ -323,7 +329,7 @@ def _get_data_storage(_data):
             system_dict = system_data._asdict()
             for label, value in system_dict.items():
                 multikey[label][source] = value
-    _data.populate_dict(multikey, prefix='disk_usage')
+    _data.populate_dict('disk_usage', multikey)
 
     # Get disk I/O usage
     io_data = psutil.disk_io_counters(perdisk=True)
@@ -337,7 +343,7 @@ def _get_data_storage(_data):
         system_dict = system_data._asdict()
         for label, value in system_dict.items():
             counterkey[label][source] = value
-    _data.populate_dict(counterkey, prefix='disk_io', base_type=64)
+    _data.populate_dict('disk_io', counterkey, base_type=64)
 
 
 def _get_data_network(_data):
@@ -359,51 +365,51 @@ def _get_data_network(_data):
         system_dict = system_data._asdict()
         for label, value in system_dict.items():
             counterkey[label][source] = value
-    _data.populate_dict(counterkey, prefix='network', base_type=64)
+    _data.populate_dict('network', counterkey, base_type=64)
 
 
-def get_id_agent(config):
+def get_agent_id(config):
     """Create a permanent UID for the _data.
 
     Args:
         config: ConfigAgent configuration object
 
     Returns:
-        id_agent: UID for agent
+        agent_id: UID for agent
 
     """
     # Initialize key variables
     agent_name = config.agent_name()
-    filename = daemon.id_agent_file(agent_name)
+    filename = daemon.agent_id_file(agent_name)
 
     # Read environment file with UID if it exists
     if os.path.isfile(filename):
         with open(filename) as f_handle:
-            id_agent = f_handle.readline()
+            agent_id = f_handle.readline()
     else:
         # Create a UID and save
-        id_agent = _generate_id_agent()
+        agent_id = _generate_agent_id()
         with open(filename, 'w+') as env:
-            env.write(str(id_agent))
+            env.write(str(agent_id))
 
     # Return
-    return id_agent
+    return agent_id
 
 
-def _generate_id_agent():
+def _generate_agent_id():
     """Generate a UID.
 
     Args:
         None
 
     Returns:
-        id_agent: the UID
+        agent_id: the UID
 
     """
     # Create a UID and save
     prehash = '{}{}{}{}{}'.format(
         random(), random(), random(), random(), time.time())
-    id_agent = general.hashstring(prehash)
+    agent_id = general.hashstring(prehash)
 
     # Return
-    return id_agent
+    return agent_id

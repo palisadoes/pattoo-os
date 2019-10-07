@@ -1,3 +1,7 @@
+# These additional PIP3 packages are required
+distro
+psutil
 flask
 gunicorn
 requests
+yaml

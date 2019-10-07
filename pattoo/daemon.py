@@ -309,18 +309,18 @@ class _Directory:
         value = '{}/lock'.format(self.root)
         return value
 
-    def id_agent(self):
-        """Define the hidden id_agent directory.
+    def agent_id(self):
+        """Define the hidden agent_id directory.
 
         Args:
             None
 
         Returns:
-            value: id_agent directory
+            value: agent_id directory
 
         """
         # Return
-        value = '{}/id_agent'.format(self.root)
+        value = '{}/agent_id'.format(self.root)
         return value
 
 
@@ -370,19 +370,19 @@ class _File:
         value = '{}/{}.lock'.format(self.directory.lock(), prefix)
         return value
 
-    def id_agent(self, prefix):
-        """Define the hidden id_agent directory.
+    def agent_id(self, prefix):
+        """Define the hidden agent_id directory.
 
         Args:
             prefix: Prefix of file
 
         Returns:
-            value: id_agent directory
+            value: agent_id directory
 
         """
         # Return
-        _mkdir(self.directory.id_agent())
-        value = '{}/{}.id_agent'.format(self.directory.id_agent(), prefix)
+        _mkdir(self.directory.agent_id())
+        value = '{}/{}.agent_id'.format(self.directory.agent_id(), prefix)
         return value
 
 
@@ -418,19 +418,19 @@ def lock_file(agent_name):
     return result
 
 
-def id_agent_file(agent_name):
-    """Get the id_agentfile for an agent.
+def agent_id_file(agent_name):
+    """Get the agent_idfile for an agent.
 
     Args:
         agent_name: Agent name
 
     Returns:
-        result: Name of id_agent file
+        result: Name of agent_id file
 
     """
     # Return
     f_obj = _File()
-    result = f_obj.id_agent(agent_name)
+    result = f_obj.agent_id(agent_name)
     return result
 
 

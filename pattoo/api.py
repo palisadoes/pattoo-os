@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 """This is a test of flask."""
 
-# Standard packages
-import json
-import logging
-
 # Pip packages
-from flask import Flask
+from flask import Flask, jsonify
 
 # Pattoo imports
 from pattoo import data
@@ -36,13 +32,4 @@ def home():
 
     # Return
     data_dict = data.poll(config)
-    _data = json.dumps(data_dict)
-    return _data
-
-
-if __name__ == "__main__":
-    API.logger.setLevel(logging.DEBUG)
-    API.logger.addHandler()
-
-    # Start app
-    API.run(debug=True)
+    return jsonify(data_dict)
