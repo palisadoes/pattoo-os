@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Switchmap-NG ingest cache daemon.
+"""Pattoo reporter daemon.
 
-Extracts agent data from cache directory files.
+Posts system data to remote host over HTTP.
 
 """
 
@@ -31,15 +31,7 @@ from pattoo import log
 
 
 class PollingAgent(agent.Agent):
-    """Switchmap-NG agent that gathers data.
-
-    Args:
-        None
-
-    Returns:
-        None
-
-    """
+    """Agent that gathers data."""
 
     def __init__(self, parent):
         """Initialize the class.
