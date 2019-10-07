@@ -14,6 +14,7 @@ import textwrap
 import sys
 import time
 import argparse
+import ipaddress
 import multiprocessing
 import os
 from pprint import pprint
@@ -307,8 +308,7 @@ class AgentAPI(Agent):
         #
         ######################################################################
         options = {
-            'bind': (
-                '{}:{}'.format(config.listen_address(), config.bind_port())),
+            'bind': _ip_binding(),
             'accesslog': config.log_file_api(),
             'errorlog': config.log_file_api(),
             'capture_output': True,
@@ -403,3 +403,37 @@ def agent_sleep(agent_name, seconds=300):
 
         # Decrement remaining time
         remaining = remaining - interval
+
+
+def _ip_binding():
+    """Create IPv4 / IPv6 binding for Gunicorn.
+
+    Args:
+        None
+
+    Returns:
+        result: bind
+
+    """
+    # Initialize key variables
+    config = CONFIG
+    ipv4 = False
+    ip_address = config.listen_address()
+
+    # Check IP address type
+    try:
+        ip_object = ipaddress.ip_address(ip_address)
+    except:
+        log_message = (
+            'The {} IP address in the configuration file is incorrectly '
+            'formatted'.format(ip_address))
+        log.log2die(1234, log_message)
+
+    # Is this an IPv4 address?
+    ipv4 = isinstance(ip_object, ipaddress.IPv4Address)
+    if ipv4 is True:
+        result = '{}:{}'.format(ip_address, config.bind_port())
+    else:
+        result = '[{}]:{}'.format(ip_address, config.bind_port())
+
+    return result
