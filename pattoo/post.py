@@ -68,7 +68,7 @@ class Data(object):
             os.mkdir(self._cache_dir)
 
         # All cache files created by this agent will end with this suffix.
-        devicehash = general.hashstring(self._data['devicename'], sha=1)
+        devicehash = general.hashstring(self._data['agent_hostname'], sha=1)
         self._cache_filename_suffix = '{}_{}.json'.format(agent_id, devicehash)
 
     def post(self, save=True, data=None):
